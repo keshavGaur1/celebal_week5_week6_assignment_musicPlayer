@@ -1,36 +1,112 @@
-import React from 'react';
-import { useSelector } from 'react-redux';
-import { useParams } from 'react-router-dom';
-
-import { Error, Loader, SongCard } from '../components';
-import { useGetSongsBySearchQuery } from '../redux/services/shazamCore';
+import React, { useState, useEffect } from "react";
+import { usePlayer } from "../context/PlayerContext";
+import { searchSongs } from "../data/mockData";
+import "../App.css";
 
 const Search = () => {
-  const { searchTerm } = useParams();
-  const { activeSong, isPlaying } = useSelector((state) => state.player);
-  const { data, isFetching, error } = useGetSongsBySearchQuery(searchTerm);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const { playSong } = usePlayer();
 
-  const songs = data?.tracks?.hits.map((song) => song.track);
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      setIsLoading(true);
+      // Use hardcoded search function
+      const results = searchSongs(searchQuery);
+      setSearchResults(results);
+      setIsLoading(false);
+    } else {
+      setSearchResults([]);
+    }
+  }, [searchQuery]);
 
-  if (isFetching) return <Loader title={`Searching ${searchTerm}...`} />;
+  const handleSongClick = (song) => {
+    playSong(song);
+  };
 
-  if (error) return <Error />;
+  const formatDuration = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  };
 
   return (
-    <div className="flex flex-col">
-      <h2 className="font-bold text-3xl text-white text-left mt-4 mb-10">Showing results for <span className="font-black">{searchTerm}</span></h2>
-
-      <div className="flex flex-wrap sm:justify-start justify-center gap-8">
-        {songs.map((song, i) => (
-          <SongCard
-            key={song.key}
-            song={song}
-            isPlaying={isPlaying}
-            activeSong={activeSong}
-            data={data}
-            i={i}
+    <div className="search-page">
+      <div className="search-header">
+        <h1>Search</h1>
+        <div className="search-input-container">
+          <input
+            type="text"
+            placeholder="Search for songs, artists, or albums..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="search-input"
           />
-        ))}
+          <i className="fas fa-search search-icon"></i>
+        </div>
+      </div>
+
+      <div className="search-content">
+        {isLoading ? (
+          <div className="loading">Searching...</div>
+        ) : searchQuery.trim() ? (
+          <div className="search-results">
+            <h2>Search Results for "{searchQuery}"</h2>
+            {searchResults.length > 0 ? (
+              <div className="songs-grid">
+                {searchResults.map((song) => (
+                  <div
+                    key={song.id}
+                    className="song-card"
+                    onClick={() => handleSongClick(song)}
+                  >
+                    <div className="song-cover">
+                      <img src={song.coverUrl} alt={song.title} />
+                      <div className="play-overlay">
+                        <i className="fas fa-play"></i>
+                      </div>
+                    </div>
+                    <div className="song-info">
+                      <h3>{song.title}</h3>
+                      <p>{song.artist}</p>
+                      <span className="duration">
+                        {formatDuration(song.duration)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="no-results">
+                <p>No songs found for "{searchQuery}"</p>
+                <p>Try searching for something else</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="search-suggestions">
+            <h2>Popular Searches</h2>
+            <div className="suggestions-grid">
+              <div className="suggestion-card">
+                <h3>Pop Hits</h3>
+                <p>Latest pop music</p>
+              </div>
+              <div className="suggestion-card">
+                <h3>Rock Classics</h3>
+                <p>Timeless rock songs</p>
+              </div>
+              <div className="suggestion-card">
+                <h3>Hip Hop</h3>
+                <p>Best hip hop tracks</p>
+              </div>
+              <div className="suggestion-card">
+                <h3>Electronic</h3>
+                <p>Electronic music</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
